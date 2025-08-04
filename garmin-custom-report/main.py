@@ -14,79 +14,29 @@ def _calculate_averages(summaries):
         return None
 
     metrics = {
-        "total_steps": 0,
-        "total_calories": 0,
-        "total_active_calories": 0,
-        "total_distance_km": 0,
-        "total_resting_hr": 0,
-        "total_min_hr": 0,
-        "total_max_hr": 0,
         "total_avg_stress": 0,
-        "total_max_stress": 0,
-        "total_bb_charged": 0,
-        "total_bb_drained": 0,
-        "total_avg_spo2": 0,
-        "total_lowest_spo2": 0,
-        "total_avg_resp": 0,
         "total_sleep_score": 0,
+        "total_hrv": 0,
+        "total_resting_hr": 0,
     }
     days_with_data = {key: 0 for key in metrics}
 
     for data in summaries:
         summary = data.get("summary")
         sleep_info = data.get("sleep")
+        hrv_info = data.get("hrv")
 
-        if not summary:
-            continue
+        if summary:
+            if (
+                summary.average_stress_level is not None
+                and summary.average_stress_level > 0
+            ):
+                metrics["total_avg_stress"] += summary.average_stress_level
+                days_with_data["total_avg_stress"] += 1
+            if summary.resting_heart_rate is not None:
+                metrics["total_resting_hr"] += summary.resting_heart_rate
+                days_with_data["total_resting_hr"] += 1
 
-        # Check if the underlying attribute is not None before using it
-        if summary.total_steps is not None:
-            metrics["total_steps"] += summary.total_steps
-            days_with_data["total_steps"] += 1
-        if summary.total_kilocalories is not None:
-            metrics["total_calories"] += summary.total_kilocalories
-            days_with_data["total_calories"] += 1
-        if summary.active_kilocalories is not None:
-            metrics["total_active_calories"] += summary.active_kilocalories
-            days_with_data["total_active_calories"] += 1
-        if summary.total_distance_meters is not None:
-            metrics["total_distance_km"] += summary.distance_km
-            days_with_data["total_distance_km"] += 1
-        if summary.resting_heart_rate is not None:
-            metrics["total_resting_hr"] += summary.resting_heart_rate
-            days_with_data["total_resting_hr"] += 1
-        if summary.min_heart_rate is not None:
-            metrics["total_min_hr"] += summary.min_heart_rate
-            days_with_data["total_min_hr"] += 1
-        if summary.max_heart_rate is not None:
-            metrics["total_max_hr"] += summary.max_heart_rate
-            days_with_data["total_max_hr"] += 1
-        if (
-            summary.average_stress_level is not None
-            and summary.average_stress_level > 0
-        ):
-            metrics["total_avg_stress"] += summary.average_stress_level
-            days_with_data["total_avg_stress"] += 1
-        if summary.max_stress_level is not None:
-            metrics["total_max_stress"] += summary.max_stress_level
-            days_with_data["total_max_stress"] += 1
-        if summary.body_battery_charged_value is not None:
-            metrics["total_bb_charged"] += summary.body_battery_charged_value
-            days_with_data["total_bb_charged"] += 1
-        if summary.body_battery_drained_value is not None:
-            metrics["total_bb_drained"] += summary.body_battery_drained_value
-            days_with_data["total_bb_drained"] += 1
-        if summary.average_spo2 is not None and summary.average_spo2 > 0:
-            metrics["total_avg_spo2"] += summary.average_spo2
-            days_with_data["total_avg_spo2"] += 1
-        if summary.lowest_spo2 is not None and summary.lowest_spo2 > 0:
-            metrics["total_lowest_spo2"] += summary.lowest_spo2
-            days_with_data["total_lowest_spo2"] += 1
-        if summary.avg_waking_respiration_value is not None:
-            metrics["total_avg_resp"] += summary.avg_waking_respiration_value
-            days_with_data["total_avg_resp"] += 1
-
-        # Access the nested sleep score from the debug info
         if (
             sleep_info
             and hasattr(sleep_info, "sleep_summary")
@@ -104,6 +54,12 @@ def _calculate_averages(summaries):
                 if score is not None:
                     metrics["total_sleep_score"] += score
                     days_with_data["total_sleep_score"] += 1
+        
+        if hrv_info and hasattr(hrv_info, "hrv_summary") and hrv_info.hrv_summary:
+            hrv_summary = hrv_info.hrv_summary
+            if hrv_summary and hrv_summary.last_night_avg and hrv_summary.last_night_avg > 0:
+                metrics["total_hrv"] += hrv_summary.last_night_avg
+                days_with_data["total_hrv"] += 1
 
     avg_metrics = {}
     for key, total in metrics.items():
@@ -153,18 +109,10 @@ def format_comparative_analysis_for_slack(last_30_days_summaries, all_time_summa
     ]
 
     metrics_to_compare = [
-        ("Steps", "total_steps", ",.0f", "👟"),
-        ("Distance (km)", "total_distance_km", ".2f", "📏"),
-        ("Sleep Score", "total_sleep_score", ".1f", "😴"),
-        ("Total Calories (kcal)", "total_calories", ",.0f", "🔥"),
-        ("Active Calories (kcal)", "total_active_calories", ",.0f", "💪"),
-        ("Resting HR (bpm)", "total_resting_hr", ".1f", "❤️"),
         ("Avg Stress", "total_avg_stress", ".1f", "😌"),
-        ("Avg Max Stress", "total_max_stress", ".1f", "😟"),
-        ("Body Battery Charged", "total_bb_charged", ".1f", "🔋+"),
-        ("Body Battery Drained", "total_bb_drained", ".1f", "🔋-"),
-        ("Avg SpO2 (%)", "total_avg_spo2", ".1f", "🫁"),
-        ("Avg Respiration (brpm)", "total_avg_resp", ".1f", "🌬️"),
+        ("HRV (ms)", "total_hrv", ".1f", "💓"),
+        ("Sleep Score", "total_sleep_score", ".1f", "😴"),
+        ("Resting HR (bpm)", "total_resting_hr", ".1f", "❤️"),
     ]
 
     for name, key, fmt, icon in metrics_to_compare:
@@ -261,13 +209,15 @@ def main():
 
         summary_accessor = api_client.metrics.get("daily_summary")
         sleep_accessor = api_client.metrics.get("sleep")
+        hrv_accessor = api_client.metrics.get("hrv")
 
-        if not summary_accessor or not sleep_accessor:
-            print("❌ Daily summary or sleep metric not available in the library.")
+        if not summary_accessor or not sleep_accessor or not hrv_accessor:
+            print("❌ Daily summary, sleep, or hrv metric not available in the library.")
             return
 
         all_summaries = summary_accessor.list(days=days_to_fetch)
         all_sleep_data = sleep_accessor.list(days=days_to_fetch)
+        all_hrv_data = hrv_accessor.list(days=days_to_fetch)
 
         if not all_summaries:
             print("❌ No historical summary data found.")
@@ -276,7 +226,7 @@ def main():
         # Merge summary and sleep data
         merged_data = {}
         for summary in all_summaries:
-            merged_data[summary.calendar_date] = {"summary": summary, "sleep": None}
+            merged_data[summary.calendar_date] = {"summary": summary, "sleep": None, "hrv": None}
 
         for sleep_info in all_sleep_data:
             # Using the correct path found from the debug info
@@ -284,6 +234,12 @@ def main():
                 date_key = sleep_info.sleep_summary.calendar_date
                 if date_key in merged_data:
                     merged_data[date_key]["sleep"] = sleep_info
+        
+        for hrv_info in all_hrv_data:
+            if hrv_info and hasattr(hrv_info, "hrv_summary") and hrv_info.hrv_summary:
+                date_key = hrv_info.hrv_summary.calendar_date
+                if date_key in merged_data:
+                    merged_data[date_key]["hrv"] = hrv_info
 
         # Convert merged data back to a list, sorted by date
         combined_list = list(merged_data.values())
@@ -294,7 +250,8 @@ def main():
 
         # Format the report into Slack blocks
         report_blocks = format_comparative_analysis_for_slack(
-            last_30_days_data, all_time_baseline_data
+            last_30_days_data,
+            all_time_baseline_data
         )
 
         # Send the report to Slack
