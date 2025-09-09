@@ -1,0 +1,31 @@
+name: Weekly Fantasy Football Report
+
+on:
+  schedule:
+    - cron: "0 17 * * 2" # Runs at 17:00 UTC (12:00 PM CST) on Tuesdays
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11" # Or whatever version you use
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run fantasy football script
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SLACK_HOOK: ${{ secrets.SLACK_HOOK }}
+        run: python fantasy-football/main.py
