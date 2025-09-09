@@ -295,17 +295,15 @@ def format_analysis_for_slack(team_name: str, analysis_json: Dict) -> List[Dict]
     if blocks and len(blocks) > 2 and blocks[-1]["type"] == "divider":
         blocks.pop()
 
-    blocks.append(
-        {
-            "type": "context",
-            "elements": [
-                {
-                    "type": "mrkdwn",
-                    "text": "⚡ Fast insights only — just the essentials",
-                }
-            ],
+    blocks.append({"type": "divider"})
+    for _ in range(5):
+        blocks.append({
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": " " 
         }
-    )
+    })
 
     return blocks
 

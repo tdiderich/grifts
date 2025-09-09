@@ -1,3 +1,5 @@
 garmy
 python-dotenv
 requests
+espn_api
+openai
