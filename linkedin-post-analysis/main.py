@@ -25,7 +25,7 @@ def analyze_linkedin_data(file_path="activity_data.csv"):
     df["Like count"] = df["Like count"].astype(int)
 
     # Add Gender column based on the person
-    gender_map = {"Cindy Gallop": "Woman", "Jane Evans": "Woman", "Matt Lawton": "Man"}
+    gender_map = {"Cindy Gallop": "Woman", "Jane Evans": "Woman", "Matt Lawton": "Man", "Tyler Diderich": "Man"}
     df["Gender"] = df["Person"].map(gender_map)
 
     # Add follower counts
