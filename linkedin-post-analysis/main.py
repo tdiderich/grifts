@@ -25,11 +25,21 @@ def analyze_linkedin_data(file_path="activity_data.csv"):
     df["Like count"] = df["Like count"].astype(int)
 
     # Add Gender column based on the person
-    gender_map = {"Cindy Gallop": "Woman", "Jane Evans": "Woman", "Matt Lawton": "Man", "Tyler Diderich": "Man"}
+    gender_map = {
+        "Cindy Gallop": "Woman",
+        "Jane Evans": "Woman",
+        "Matt Lawton": "Man",
+        "Tyler Diderich": "Man",
+    }
     df["Gender"] = df["Person"].map(gender_map)
 
-    # Add follower counts
-    follower_map = {"Cindy Gallop": 130000, "Jane Evans": 17000, "Matt Lawton": 9000}
+    # Add follower counts (CORRECTED: Added Tyler Diderich)
+    follower_map = {
+        "Cindy Gallop": 130000,
+        "Jane Evans": 17000,
+        "Matt Lawton": 9000,
+        "Tyler Diderich": 5000,
+    }
     df["Follower Count"] = df["Person"].map(follower_map)
 
     # Calculate Engagement Rate (Likes per 10,000 Followers)
@@ -55,11 +65,22 @@ def analyze_linkedin_data(file_path="activity_data.csv"):
     print(f"P-value: {p_val:.4f}")
     if p_val < 0.05:
         print(
-            "Result: There is a statistically significant difference in engagement rates between men and women.\n"
+            "Result: There is a statistically significant difference in engagement rates between men and women."
         )
     else:
         print(
-            "Result: There is no statistically significant difference in engagement rates between men and women.\n"
+            "Result: There is no statistically significant difference in engagement rates between men and women."
+        )
+
+    # --- NEW: Calculate and Display Mean Engagement Rates ---
+    mean_engagement_by_gender = df.groupby("Gender")["Engagement Rate"].mean()
+    print("\nAverage Engagement Rate (Likes per 10,000 Followers):")
+    print(mean_engagement_by_gender.round(2))
+
+    if not mean_engagement_by_gender.empty:
+        higher_gender = mean_engagement_by_gender.idxmax()
+        print(
+            f"\nConclusion: The '{higher_gender}' group had the higher average engagement rate in this dataset.\n"
         )
 
     # --- 2. Analysis by Post Type ---
@@ -82,7 +103,6 @@ def analyze_linkedin_data(file_path="activity_data.csv"):
 
     # --- 3. Analysis by Post Content ---
     print("## 3. Analysis by Post Content (Top Categories)")
-    # To run a meaningful test, we only include content categories with enough posts.
     min_samples = 5
     content_counts = df["Post_content"].value_counts()
     frequent_content = content_counts[content_counts >= min_samples].index
@@ -116,7 +136,6 @@ def analyze_linkedin_data(file_path="activity_data.csv"):
         "This powerful test looks at all factors at once to find the most important drivers of engagement."
     )
     try:
-        # Using the filtered dataframe to ensure robust results
         model = ols(
             'Q("Engagement Rate") ~ C(Gender) + C(Post_type) + C(Post_content)',
             data=df_filtered_content,
